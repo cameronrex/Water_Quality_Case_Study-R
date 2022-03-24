@@ -1,6 +1,7 @@
 # Water_Quality_Case_Study-R
-Austin TX Water Quality Case Study in R
-
+Data Wrangling Case Study in R using Austin TX Water Quality Data
+(written in R-Studio)
+-From LinkedIn Learning-Data Wrangling in R (2017)
 
 ### Load in the libraries that we'll need
 library(tidyverse)
@@ -14,8 +15,7 @@ water <- read_csv('http://594442.youcanlearnit.net/austinwater.csv')
 glimpse(water)
 
 ### First, let's get rid of a lot of columns that we don't need
-### I'm going to do that by building a new tibble with just
-### siteName, siteType, parameter, result and unit
+### I'm going to do that by building a new tibble with just siteName, siteType, parameter, result and unit
 
 water <- tibble('siteName'=water$SITE_NAME,
                 'siteType'=water$SITE_TYPE,
@@ -105,6 +105,7 @@ ggplot(filtered_water, mapping=aes(x=sampleTime, y=result)) +
 
 glimpse(subset(filtered_water, result>1000000))
 
+### Remove the obvious outlier and the NA result
 remove <- which(filtered_water$result>1000000 |
                   is.na(filtered_water$result))
 
@@ -121,13 +122,60 @@ summary(filtered_water)
 ggplot(data=filtered_water, mapping=aes(x=unit, y=result)) +
   geom_boxplot()
 
-convert <- which(filtered_water$result>60 &
-                   filtered_water$unit=='Deg. Celsius')
-
+convert <- which(filtered_water$result>60 & filtered_water$unit=='Deg. Celsius')
+### Change the units
 filtered_water$unit[convert] <- 'Deg. Fahrenheit'
 
-ggplot(data=filtered_water, mapping=aes(x=unit, y=result)) +
-  geom_boxplot()
+### Check the box plot again, see how it looks
+ggplot(data=filtered_water, mapping=aes(x=unit, y=result)) + geom_boxplot()
 
+### Let's find our Fahrenheit values in the dataset
+fahrenheit <- which(filtered_water$unit=='Deg. Fahrenheit')
+
+### And convert them to Celsius
+filtered_water$result[fahrenheit] <- (filtered_water$result[fahrenheit] - 32) * (5/9)
+
+### Now how do our boxplots look?
+ggplot(data=filtered_water, mapping = aes(x=unit,y=result)) + geom_boxplot()
+
+### I should fix up the unit values
+filtered_water$unit[fahrenheit] <- 'Deg. Celsius'
+
+### Then check the plots again
+ggplot(data=filtered_water, mapping = aes(x=unit,y=result)) + geom_boxplot()
+
+### Let's look at a final summary of the data
+summary(filtered_water)
+
+### There are some empty factor levels in there, let's get rid of them
+filtered_water$unit <- droplevels(filtered_water$unit)
+summary(filtered_water)
+
+### Get rid of Parameter type and Unit
+filtered_water <- filtered_water[, -c(4,7)]
+summary(filtered_water)
+### make the tibble into a wide_tibble
+filtered_water_wide <- spread(filtered_water, parameter, result)
+
+### Looks like there are some duplicate rows, lets look at those
+filtered_water[c(49274,49219,49284,49342),]
+
+### Make a tibble that excludes the result data
+dupe_check <- filtered_water[,-5]
+### Find the records that are duplicates
+dupes <- which(duplicated(dupe_check))
+
+### Remove those duplicate records
+filtered_water <- filtered_water[-dupes,]
+
+### Retry creating a wide spread tibble with parameter (key) and result (value)
+filtered_water_wide <- spread(filtered_water, parameter, result)
+### See what that looks like
+glimpse(filtered_water_wide)
+
+### Clean up the clumn names, not really a fan of ALL_CAPITALS
+colnames(filtered_water_wide)[4] <- "pH"
+###
+colnames(filtered_water_wide)[5] <- "temperature"
 
 
